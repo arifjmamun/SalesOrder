@@ -5,7 +5,7 @@ using SalesOrder.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
+builder.Services.AddCors();
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -22,6 +22,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(
 );
 
 var app = builder.Build();
+
+app.UseCors(c => c.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
