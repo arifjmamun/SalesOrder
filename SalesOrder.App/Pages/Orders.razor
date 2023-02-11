@@ -1,0 +1,66 @@
+@inject IOrderService OrderService
+
+@page "/orders"
+@using SalesOrder.Common.DTO.Order
+@using SalesOrder.App.Services
+@using SalesOrder.Common.Models
+
+<RadzenDataGrid @ref=@_dataGrid IsLoading="@_isLoading" Data="@_orders" Count="@_count" 
+                LoadData="@LoadData" TItem="OrderDto" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Center" 
+                AllowSorting="true" PageSizeOptions="@_pageSizeOptions" ShowPagingSummary="@ShowPagerSummary" 
+                PagingSummaryFormat="@PagingSummaryFormat">
+    <Columns>
+        <RadzenDataGridColumn TItem="OrderDto" Property="Id" Title="Order ID"/>
+        <RadzenDataGridColumn TItem="OrderDto" Property="Name" Title="Name"/>
+        <RadzenDataGridColumn TItem="OrderDto" Property="State" Title="State"/>
+        <RadzenDataGridColumn TItem="OrderDto" Property="CreatedAt" Title="Created At"/>
+        <RadzenDataGridColumn TItem="OrderDto" Property="UpdatedAt" Title="Updated At"/>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    private const string PagingSummaryFormat = "Displaying page {0} of {1} (total {2} records)";
+
+    private RadzenDataGrid<OrderDto> _dataGrid;
+    private readonly IEnumerable<int> _pageSizeOptions = new int[] { 10, 20, 30 };
+    private bool _isLoading = false;
+
+    private IEnumerable<OrderDto> _orders = new List<OrderDto>();
+    private int _count = 0;
+
+    private const bool ShowPagerSummary = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    
+        var result = await OrderService.GetOrders(new PaginationQuery { });
+        if (result != null)
+        {
+            _orders = result.Items;
+            _count = result.Count;
+        }
+    }
+    
+    async Task LoadData(LoadDataArgs args)
+    {
+        _isLoading = true;
+        
+        var sort = args.Sorts.LastOrDefault();
+
+        var query = new PaginationQuery
+        {
+            Page = args.Skip != null && args.Top != null ? ((int)args.Skip / (int)args.Top + 1) : 1,
+            PageSize = args.Top ?? 10,
+            SortField = sort?.Property ?? "CreatedAt",
+            SortOrder = sort?.SortOrder == SortOrder.Ascending ? "asc" : "desc"
+        };
+
+        var result = await OrderService.GetOrders(query);
+        
+        _orders = result.Items;
+        _count = result.Count;
+
+        _isLoading = false;
+    }
+}

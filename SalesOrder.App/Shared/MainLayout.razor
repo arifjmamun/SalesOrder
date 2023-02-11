@@ -1,0 +1,27 @@
+﻿@inherits LayoutComponentBase
+
+<RadzenLayout class="rz-shadow-3">
+    <RadzenHeader>
+        <div class="d-flex align-items-center">
+            <RadzenSidebarToggle Click="@(() => _sidebarExpanded = !_sidebarExpanded)" />
+            <RadzenLabel Text="Header" />
+        </div>
+    </RadzenHeader>
+    <RadzenSidebar @bind-Expanded="@_sidebarExpanded">
+        <RadzenPanelMenu>
+            <RadzenPanelMenuItem Text="Home" Icon="home" Path="/" />
+            <RadzenPanelMenuItem Text="Orders" Icon="collections_bookmark" Path="orders" />
+            <RadzenPanelMenuItem Text="Windows" Icon="window" Path="windows" />
+            <RadzenPanelMenuItem Text="Elements" Icon="widgets" Path="elements" />
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+    <RadzenBody>
+        <div class="p-2">
+            @Body
+        </div>
+    </RadzenBody>
+</RadzenLayout>
+
+@code {
+    bool _sidebarExpanded = true;
+}
