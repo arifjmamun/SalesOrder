@@ -1,13 +1,21 @@
 ﻿using System.Collections;
-using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 
 namespace SalesOrder.Common.Helpers;
 
 public static class HttpClientExtension
 {
+    public static async Task<HttpResponseMessage> GetJsonAsync(this HttpClient client, string requestUri, object value = null)
+    {
+        if (value != null)
+        {
+            requestUri += $"?{value.ToQueryString()}";
+        }
+
+        return await client.GetAsync(requestUri);
+    }
+
     public static async Task<HttpResponseMessage> PostJsonAsync(this HttpClient client, string requestUri, object value)
     {
         var stringContent = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");
@@ -15,7 +23,8 @@ public static class HttpClientExtension
     }
 
 
-    public static async Task<HttpResponseMessage> PatchJsonAsync(this HttpClient client, string requestUri, object value)
+    public static async Task<HttpResponseMessage> PatchJsonAsync(this HttpClient client, string requestUri,
+        object value)
     {
         var stringContent = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");
         return await client.PatchAsync(requestUri, stringContent);
@@ -28,56 +37,32 @@ public static class HttpClientExtension
         return await client.PutAsync(requestUri, stringContent);
     }
 
-    public static string ToQueryString(this object obj)
+    private static string ToQueryString(this object obj)
     {
-        if (!obj.GetType().IsComplex())
+        if (obj == null)
         {
-            return obj.ToString();
+            return string.Empty;
         }
 
-        var values = obj
-            .GetType()
-            .GetProperties()
-            .Where(o => o.GetValue(obj, null) != null);
+        var properties = obj.GetType().GetProperties()
+            .Where(p => p.GetValue(obj, null) != null);
 
-        var result = new QueryString();
-
-        foreach (var value in values)
+        var queryString = string.Join("&", properties.Select(p =>
         {
-            if (!typeof(string).IsAssignableFrom(value.PropertyType)
-                && typeof(IEnumerable).IsAssignableFrom(value.PropertyType))
-            {
-                var items = value.GetValue(obj) as IList;
-                if (items!.Count > 0)
-                {
-                    result = items.Cast<object>().Aggregate(result, (current, t) => current.Add(value.Name, ToQueryString(t)));
-                }
-            }
-            else if (value.PropertyType.IsComplex())
-            {
-                result = result.Add(value.Name, ToQueryString(value));
-            }
-            else
-            {
-                result = result.Add(value.Name, value.GetValue(obj)?.ToString());
-            }
-        }
+            var value = p.GetValue(obj, null);
 
-        return result.Value;
-    }
+            if (value is IEnumerable items && !(value is string))
+            {
+                var queryStringParts = items
+                    .Cast<object>()
+                    .Select(i => $"{p.Name}={ToQueryString(i)}");
 
-    private static bool IsComplex(this Type type)
-    {
-        var typeInfo = type.GetTypeInfo();
-        if (typeInfo.IsGenericType && typeInfo.GetGenericTypeDefinition() == typeof(Nullable<>))
-        {
-            // nullable type, check if the nested type is simple.
-            return IsComplex(typeInfo.GetGenericArguments()[0]);
-        }
-        return !(typeInfo.IsPrimitive
-                 || typeInfo.IsEnum
-                 || type.Equals(typeof(Guid))
-                 || type.Equals(typeof(string))
-                 || type.Equals(typeof(decimal)));
+                return string.Join("&", queryStringParts);
+            }
+
+            return $"{p.Name}={value}";
+        }));
+
+        return queryString;
     }
 }
